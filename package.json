@@ -1,0 +1,14 @@
+{
+  "name": "basic-ai-agent",
+  "module": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env agent.js"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
