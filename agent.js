@@ -1,8 +1,16 @@
 import Groq from "groq-sdk";
+import readline from "node:readline/promises";
+
+const expenseDB = [];
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 async function callAgent() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
   const messages = [
     {
       role: "system",
@@ -10,41 +18,50 @@ async function callAgent() {
             current datetime: ${new Date().toUTCString()}`,
     },
   ];
-  messages.push({
-    role: "user",
-    content: "How much money i Have ?",
-  });
 
+  // for user input loop
   while (true) {
-    const chatCompletion = await getGroqChatCompletion(messages);
-    // Print the completion returned by the LLM.
-    // console.log(
-    //   "chatCompletion",
-    //   chatCompletion.choices[0]?.message?.tool_calls,
-    // );
-    // console.log("chatCompletion_message", chatCompletion.choices[0]?.message);
-    const toolCall = chatCompletion.choices[0]?.message?.tool_calls;
+    const question = await rl.question("User : ");
 
-    messages.push(chatCompletion.choices[0]?.message);
-
-    if (!toolCall) {
-      console.log(`Assistant: ${chatCompletion.choices[0]?.message?.content}`);
+    if (question.toLowerCase() === "exit") {
       break;
     }
 
-    for (const tool of toolCall) {
-      const functionName = tool.function.name;
-      const functionArgs = tool.function.arguments;
-      let result = "";
-      if (functionName === "getTotalExpense") {
-        result = await getTotalExpense(JSON.parse(functionArgs));
+    messages.push({
+      role: "user",
+      content: question,
+    });
+
+    //for agent input loop
+    while (true) {
+      const chatCompletion = await getGroqChatCompletion(messages);
+      const toolCall = chatCompletion.choices[0]?.message?.tool_calls;
+
+      messages.push(chatCompletion.choices[0]?.message);
+
+      if (!toolCall) {
+        console.log(
+          `Assistant: ${chatCompletion.choices[0]?.message?.content}`,
+        );
+        break;
       }
-      messages.push({
-        role: "tool",
-        content: result,
-        tool_call_id: tool.id,
-      });
-      //   console.log("Result :: ", result);
+
+      for (const tool of toolCall) {
+        const functionName = tool.function.name;
+        const functionArgs = tool.function.arguments;
+        let result = "";
+        if (functionName === "getTotalExpense") {
+          result = await getTotalExpense(JSON.parse(functionArgs));
+        } else if (functionName === "addExpense") {
+          result = await addExpense(JSON.parse(functionArgs));
+        }
+        messages.push({
+          role: "tool",
+          content: result,
+          tool_call_id: tool.id,
+        });
+        //   console.log("Result :: ", result);
+      }
     }
   }
 }
@@ -75,6 +92,27 @@ export async function getGroqChatCompletion(messages = []) {
           },
         },
       },
+      {
+        type: "function",
+        function: {
+          name: "addExpense",
+          description: "add new expense to db ",
+          parameters: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Name of the expense",
+              },
+              amount: {
+                type: "string",
+                description: "Amount of the expense",
+              },
+            },
+            // required: ["fromDate", "toDate"],
+          },
+        },
+      },
     ],
   });
 }
@@ -86,4 +124,10 @@ callAgent();
 async function getTotalExpense(fromDate = "2026-01-01", toDate = "2026-12-31") {
   console.log("Getting total expense from ", fromDate, " to ", toDate + "\n");
   return "Total expense is 1000 PKR";
+}
+
+async function addExpense({ name = "", amount = "" }) {
+  // console.log(`Adding ${amount} to expense db for ${name}`);
+  expenseDB.push({ name, amount });
+  return "Added to the database.";
 }
