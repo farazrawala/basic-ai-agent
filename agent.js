@@ -15,36 +15,38 @@ async function callAgent() {
     content: "How much money i Have ?",
   });
 
-  const chatCompletion = await getGroqChatCompletion(messages);
-  // Print the completion returned by the LLM.
-  console.log("chatCompletion", chatCompletion.choices[0]?.message?.tool_calls);
-  console.log("chatCompletion_message", chatCompletion.choices[0]?.message);
-  const toolCall = chatCompletion.choices[0]?.message?.tool_calls;
+  while (true) {
+    const chatCompletion = await getGroqChatCompletion(messages);
+    // Print the completion returned by the LLM.
+    // console.log(
+    //   "chatCompletion",
+    //   chatCompletion.choices[0]?.message?.tool_calls,
+    // );
+    // console.log("chatCompletion_message", chatCompletion.choices[0]?.message);
+    const toolCall = chatCompletion.choices[0]?.message?.tool_calls;
 
-  messages.push(chatCompletion.choices[0]?.message);
+    messages.push(chatCompletion.choices[0]?.message);
 
-  if (!toolCall) {
-    console.log(`Assistant: ${chatCompletion.choices[0]?.message?.content}`);
-    return;
-  }
-
-  for (const tool of toolCall) {
-    const functionName = tool.function.name;
-    const functionArgs = tool.function.arguments;
-    let result = "";
-    if (functionName === "getTotalExpense") {
-      result = await getTotalExpense(JSON.parse(functionArgs));
+    if (!toolCall) {
+      console.log(`Assistant: ${chatCompletion.choices[0]?.message?.content}`);
+      break;
     }
-    messages.push({
-      role: "tool",
-      content: result,
-      tool_call_id: tool.id,
-    });
-    console.log("Result :: ", result);
-  }
 
-  const chatCompletion2 = await getGroqChatCompletion(messages);
-  console.log("Chat Completion 2 :: ", chatCompletion2.choices[0]?.message);
+    for (const tool of toolCall) {
+      const functionName = tool.function.name;
+      const functionArgs = tool.function.arguments;
+      let result = "";
+      if (functionName === "getTotalExpense") {
+        result = await getTotalExpense(JSON.parse(functionArgs));
+      }
+      messages.push({
+        role: "tool",
+        content: result,
+        tool_call_id: tool.id,
+      });
+      //   console.log("Result :: ", result);
+    }
+  }
 }
 
 export async function getGroqChatCompletion(messages = []) {
