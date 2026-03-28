@@ -10,5 +10,9 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "grok-sdk": "^0.0.1-security",
+    "groq-sdk": "^1.1.2"
   }
 }
